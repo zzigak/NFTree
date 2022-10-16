@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>NFTree</title>
+
+    <style>
+        html {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stellar-sdk/10.4.0/stellar-sdk.js"></script>
+    <script>
+        const server = new StellarSdk.Server("https://horizon-testnet.stellar.org");
+        var pair = StellarSdk.Keypair.random();
+        // Minting Keys
+        var mintingKeys = StellarSdk.Keypair.random();
+        // Crate new account for minting
+        createMintingAccount(mintingKeys);
+        // Add NFTree
+        var nftree = new StellarSdk.Asset("NFTree", mintingKeys.publicKey());
+
+        async function createAccount() {
+
+            try {
+                const response = await fetch(
+                    `https://friendbot.stellar.org?addr=${encodeURIComponent(
+                        pair.publicKey(),
+                    )}`,
+                );
+                console.log("SUCCESS! You have a new account :)\n", response);
+                document.getElementById("publicKey").value = pair.publicKey();
+                document.getElementById("secretKey").value = pair.secret();
+
+            } catch (e) {
+                console.error("ERROR!", e);
+            }
+        }
+        // mint NFT
+        function mintNFT() {
+            console.log("minting NFT");
+            // load account
+            // minting keys
+
+            server
+                .loadAccount(pair.publicKey())
+                .then(function (receiver) {
+                    var transaction = new StellarSdk.TransactionBuilder(receiver, {
+                        fee: 100,
+                        networkPassphrase: StellarSdk.Networks.TESTNET,
+                    })
+                        // The `changeTrust` operation creates (or alters) a trustline
+                        // The `limit` parameter below is optional
+                        .addOperation(
+                            StellarSdk.Operation.changeTrust({
+                                asset: nftree,
+                                limit: "1000",
+                            }),
+                        )
+                        // setTimeout is required for a transaction
+                        .setTimeout(100)
+                        .build();
+                    transaction.sign(pair);
+                    return server.submitTransaction(transaction);
+                })
+                .then(console.log)
+                // Second, the issuing account actually sends a payment using the asset
+                .then(function () {
+                    return server.loadAccount(mintingKeys.publicKey());
+                })
+                .then(function (issuer) {
+                    var transaction = new StellarSdk.TransactionBuilder(issuer, {
+                        fee: 100,
+                        networkPassphrase: StellarSdk.Networks.TESTNET,
+                    })
+                        .addOperation(
+                            StellarSdk.Operation.payment({
+                                destination: pair.publicKey(),
+                                asset: nftree,
+                                amount: "1",
+                            }),
+                        )
+                        // setTimeout is required for a transaction
+                        .setTimeout(100)
+                        .build();
+                    transaction.sign(mintingKeys);
+                    return server.submitTransaction(transaction);
+                })
+                .then(console.log)
+                .catch(function (error) {
+                    console.error("Error!", error);
+                });
+        }
+
+        async function createMintingAccount(mintingPair) {
+            try {
+                const response = await fetch(
+                    `https://friendbot.stellar.org?addr=${encodeURIComponent(
+                        mintingPair.publicKey(),
+                    )}`,
+                );
+                console.log("SUCCESS! You have a new account :)\n", response);
+
+            } catch (e) {
+                console.error("ERROR!", e);
+            }
+        }
+
+    </script>
+</head>
+
+<body>
+    <h1>Welcome to NFTree</h1>
+    <!-- Button to create account-->
+    <button onclick="createAccount()">Create Account</button>
+    <h3>Public Key</h3> <input type="text" id="publicKey" value="">
+    <h3>Secret Key</h3> <input type="text" id="secretKey" value="">
+    <h3>Asset Code</h3> <input type="text" id="assetCode" value="">
+    <button onclick="mintNFT()">Mint NFT</button>
+</body>
+
+
+</html>

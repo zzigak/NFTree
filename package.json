@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "mnemonic-to-key-pair": "^1.0.0",
+    "stellar-sdk": "^10.4.0"
+  }
+}
